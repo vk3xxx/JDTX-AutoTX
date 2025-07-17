@@ -130,6 +130,7 @@ while True:
                 print()
                 send_alt_n()
                 print("--- TX enabled (Alt-N sent to JTDX) ---")
+                script_start_time = time.time()  # Reset 60-min timer after random shutdown
             else:
                 print("Waiting 45 seconds before enabling TX...")
                 for i in range(46):
