@@ -3,6 +3,7 @@ import re
 import time
 import subprocess
 import sys
+import random
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -25,6 +26,8 @@ last_qso_time = time.time()
 cq_restart_active = False
 cq_restart_start_time = None
 cq_seen_during_restart = False
+
+script_start_time = time.time()
 
 def get_jtdx_window():
     try:
@@ -104,15 +107,39 @@ while True:
             last_complete_time = now
             complete_time = time.strftime('%Y-%m-%d %H:%M:%S')
             print(f"✅ --- QSO finished at {complete_time} ---")
-            print("Waiting 45 seconds before enabling TX...")
-            for i in range(46):
-                bar = ('#' * i).ljust(45)
-                sys.stdout.write(f"\r[{bar}] {i}/45s")
-                sys.stdout.flush()
-                time.sleep(1)
-            print()  # Move to next line after progress bar
-            send_alt_n()
-            print("--- TX enabled (Alt-N sent to JTDX) ---")
+            # After 60 minutes of script activity, randomize CQ re-enable
+            if now - script_start_time > 3600:
+                delay = random.randint(180, 600)
+                print(f"Waiting {delay//60} min {delay%60} sec before re-enabling CQ (Alt-6)...")
+                for i in range(delay):
+                    bar = ('#' * ((i+1) * 45 // delay)).ljust(45)
+                    remaining = delay - i - 1
+                    mins, secs = divmod(remaining, 60)
+                    sys.stdout.write(f"\r[CQ restart delay] [{bar}] {mins:02d}:{secs:02d} remaining ")
+                    sys.stdout.flush()
+                    time.sleep(1)
+                print()
+                send_alt_6()
+                print("--- CQ re-enabled (Alt-6 sent to JTDX) ---")
+                print("Waiting 60 seconds before enabling TX...")
+                for i in range(61):
+                    bar = ('#' * (i % 45)).ljust(45)
+                    sys.stdout.write(f"\r[TX delay] [{bar}] {i}/60s")
+                    sys.stdout.flush()
+                    time.sleep(1)
+                print()
+                send_alt_n()
+                print("--- TX enabled (Alt-N sent to JTDX) ---")
+            else:
+                print("Waiting 45 seconds before enabling TX...")
+                for i in range(46):
+                    bar = ('#' * i).ljust(45)
+                    sys.stdout.write(f"\r[{bar}] {i}/45s")
+                    sys.stdout.flush()
+                    time.sleep(1)
+                print()
+                send_alt_n()
+                print("--- TX enabled (Alt-N sent to JTDX) ---")
             in_qso = False
             last_qso_time = time.time()
             cq_restart_active = False
