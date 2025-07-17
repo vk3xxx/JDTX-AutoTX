@@ -1,0 +1,15 @@
+[Unit]
+Description=AutoTX73 JTDX QSO Automation Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/usr/bin/python3 /home/pi/autotx73.py
+Restart=on-failure
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+
+[Install]
+WantedBy=multi-user.target 
