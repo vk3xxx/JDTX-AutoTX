@@ -6,6 +6,7 @@ import sys
 import socket
 import re
 from collections import deque
+import os
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -50,6 +51,75 @@ def send_alt_6():
         return True
     except subprocess.CalledProcessError as e:
         return False
+
+def refocus_own_terminal(add_message=None):
+    import subprocess
+    import os
+    import time
+    status = None
+    try:
+        # 1. Try to refocus by window class (lxterminal.LXterminal)
+        out = subprocess.check_output(['wmctrl', '-lx']).decode()
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) < 5:
+                continue
+            win_id, win_class = parts[0], parts[2]
+            if win_class.lower() == 'lxterminal.lxterminal':
+                subprocess.call(['wmctrl', '-ia', win_id])
+                status = 'Refocused LXTerminal window (class match)'
+                if add_message:
+                    add_message(status)
+                return True
+        # 2. Try to refocus by window title substring (pi@digipi)
+        for line in out.splitlines():
+            if 'pi@digipi' in line:
+                win_id = line.split()[0]
+                subprocess.call(['wmctrl', '-ia', win_id])
+                status = 'Refocused LXTerminal window (title match)'
+                if add_message:
+                    add_message(status)
+                return True
+        # 3. Fallback: walk up the process tree to find any ancestor PID that matches a window
+        import psutil
+        p = psutil.Process(os.getpid())
+        ancestor_pids = [p.pid]
+        try:
+            while True:
+                p = p.parent()
+                if not p:
+                    break
+                ancestor_pids.append(p.pid)
+        except Exception:
+            pass
+        out2 = subprocess.check_output(['wmctrl', '-lp']).decode()
+        for pid in ancestor_pids:
+            for line in out2.splitlines():
+                parts = line.split()
+                if len(parts) < 4:
+                    continue
+                win_id, win_pid = parts[0], parts[2]
+                if str(pid) == win_pid:
+                    subprocess.call(['wmctrl', '-ia', win_id])
+                    status = 'Refocused terminal window (PID match)'
+                    if add_message:
+                        add_message(status)
+                    return True
+        # 4. Fallback: try to refocus by TERM env
+        term = os.environ.get('TERM_PROGRAM') or os.environ.get('TERM') or 'Terminal'
+        for line in out2.splitlines():
+            if term in line:
+                win_id = line.split()[0]
+                subprocess.call(['wmctrl', '-ia', win_id])
+                status = 'Refocused terminal window (env fallback)'
+                if add_message:
+                    add_message(status)
+                return True
+    except Exception as e:
+        status = 'Could not refocus terminal window'
+    if add_message:
+        add_message(status or 'Could not refocus terminal window')
+    return False
 
 class Autotx73UI:
     def __init__(self, stdscr):
@@ -117,6 +187,7 @@ class Autotx73UI:
                 self.add_message("Alt-N sent - Tx toggled")
                 self.add_message("TX enabled (Alt-N sent). System is now active.")
                 self.reset_timer()
+                refocus_own_terminal(self.add_message)
             else:
                 self.add_message("Failed to send Alt-N (TX enable).")
         else:
