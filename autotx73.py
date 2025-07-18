@@ -156,14 +156,24 @@ while True:
         cq_seen_during_restart = False
         last_qso_time = now  # Reset timer so it won't fire again for another 5 minutes
 
-    if cq_restart_active and cq_restart_start_time is not None and (now - cq_restart_start_time > 60):
-        if not cq_seen_during_restart:
-            print("CQ restart: No CQ detected in 1 minute, sending Alt-N to enable TX.")
-            send_alt_n()
-            print("--- TX enabled (Alt-N sent to JTDX) ---")
-        else:
-            print("CQ restart: CQ detected, no need to enable TX.")
-        cq_restart_active = False
-        cq_seen_during_restart = False
-        cq_restart_start_time = None
+    # Only monitor for CQ during the 1-min window after Alt-6
+    if cq_restart_active and cq_restart_start_time is not None:
+        if now - cq_restart_start_time <= 60:
+            # If CQ from us detected during this window, handle immediately
+            if cq_seen_during_restart:
+                print("TX already enabled (CQ detected). Timers reset.")
+                cq_restart_active = False
+                cq_seen_during_restart = False
+                cq_restart_start_time = None
+                last_qso_time = now
+        elif now - cq_restart_start_time > 60:
+            # 1 min passed, no CQ detected
+            if not cq_seen_during_restart:
+                print("CQ restart: No CQ detected in 1 minute, sending Alt-N to enable TX.")
+                send_alt_n()
+                print("No CQ detected, TX enabled. Timers reset.")
+            cq_restart_active = False
+            cq_seen_during_restart = False
+            cq_restart_start_time = None
+            last_qso_time = now
 
