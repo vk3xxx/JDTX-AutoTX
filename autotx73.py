@@ -4,6 +4,7 @@ import time
 import subprocess
 import sys
 import random
+import threading
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -64,6 +65,18 @@ def send_alt_6():
     except subprocess.CalledProcessError as e:
         print("✘  Command failed:", e)
 
+def print_qso_timer():
+    while True:
+        now = time.time()
+        elapsed = int(now - last_qso_time)
+        mins, secs = divmod(elapsed, 60)
+        print(f"[QSO Timer] Time since last QSO or transmission: {mins} min {secs} sec")
+        time.sleep(60)
+
+# Start the QSO timer thread
+qso_timer_thread = threading.Thread(target=print_qso_timer, daemon=True)
+qso_timer_thread.start()
+
 # Set up UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", UDP_PORT))
@@ -81,6 +94,7 @@ while True:
 
     # Detect CQ call from our callsign
     if cq_pattern.search(text):
+        last_qso_time = now  # Reset timer on CQ
         if in_qso:
             print(f"QSO aborted: CQ detected from {CALLSIGN} during QSO with {other_callsign if 'other_callsign' in locals() else 'UNKNOWN'}")
             in_qso = False
@@ -94,6 +108,7 @@ while True:
         start_time = time.strftime('%Y-%m-%d %H:%M:%S')
         print(f"🟢 --- New QSO started with {other_callsign} at {start_time} ---")
         in_qso = True
+        last_qso_time = now  # Reset timer on QSO start
     # If already in QSO, check if the callsign changes
     elif match and in_qso:
         new_callsign = match.group(1)
@@ -107,6 +122,7 @@ while True:
             last_complete_time = now
             complete_time = time.strftime('%Y-%m-%d %H:%M:%S')
             print(f"✅ --- QSO finished at {complete_time} ---")
+            last_qso_time = now  # Reset timer on QSO finish
             # After 60 minutes of script activity, randomize CQ re-enable
             if now - script_start_time > 3600:
                 delay = random.randint(180, 600)
