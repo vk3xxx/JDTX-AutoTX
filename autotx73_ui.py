@@ -32,29 +32,23 @@ def get_jtdx_window():
 def send_alt_n():
     wid = get_jtdx_window()
     if not wid:
-        print("✘  No JTDX / WSJT‑X window found")
         return False
     try:
         subprocess.check_call(["wmctrl", "-ia", wid])
         subprocess.check_call(["xte", "keydown Alt_L", "key n", "keyup Alt_L"])
-        print("✅  Alt‑N sent – Tx toggled")
         return True
     except subprocess.CalledProcessError as e:
-        print("✘  Command failed:", e)
         return False
 
 def send_alt_6():
     wid = get_jtdx_window()
     if not wid:
-        print("✘  No JTDX / WSJT‑X window found")
         return False
     try:
         subprocess.check_call(["wmctrl", "-ia", wid])
         subprocess.check_call(["xte", "keydown Alt_L", "key 6", "keyup Alt_L"])
-        print("✅  Alt‑6 sent")
         return True
     except subprocess.CalledProcessError as e:
-        print("✘  Command failed:", e)
         return False
 
 class Autotx73UI:
@@ -73,6 +67,10 @@ class Autotx73UI:
         self.lock = threading.Lock()
         self.qso_partner = None  # Ensure this is set before threads start
         self.cq_active = False   # Ensure this is set before threads start
+        self.countdown_active = False
+        self.countdown_max = 0
+        self.countdown_value = 0
+        self.countdown_label = ""
         self.timer_thread = threading.Thread(target=self.update_timer, daemon=True)
         self.timer_thread.start()
         self.udp_thread = threading.Thread(target=self.udp_listener, daemon=True)
@@ -91,35 +89,29 @@ class Autotx73UI:
     def reset_timer(self):
         self.last_tx_time = time.time()
 
+    def start_countdown(self, seconds, label):
+        def countdown_thread():
+            self.countdown_active = True
+            self.countdown_max = seconds
+            self.countdown_label = label
+            for i in range(seconds + 1):
+                self.countdown_value = i
+                self.draw()
+                time.sleep(1)
+            self.countdown_active = False
+            self.draw()
+        t = threading.Thread(target=countdown_thread, daemon=True)
+        t.start()
+
     def enable_system(self):
         self.enabled = True
         self.add_message("Enabling system: Sending Alt-6 (CQ)...")
         if send_alt_6():
             self.add_message("Alt-6 sent (CQ enabled). Waiting 10 seconds...")
             self.reset_timer()
-            max_y, max_x = self.stdscr.getmaxyx()
-            border_thickness = min(4, max((max_y - 1) // 2, 1), max((max_x - 1) // 2, 1))
-            bar_width = 30
-            # Place the countdown bar in the bottom border, centered
-            bar_y = max_y - border_thickness // 2 - 1
-            bar_x = max_x // 2 - bar_width // 2
-            for i in range(11):
-                filled = int(bar_width * i / 10)
-                bar = "█" * filled + " " * (bar_width - filled)
-                try:
-                    # Only update the bar area, not the whole line
-                    self.stdscr.addstr(bar_y, bar_x, bar, curses.color_pair(3))
-                    self.stdscr.addstr(bar_y, bar_x + bar_width + 1, f" {i}/10s before TX enable", curses.color_pair(4))
-                    self.stdscr.refresh()
-                except Exception:
-                    pass
-                time.sleep(1)
-            # Clear only the bar area after countdown to border color
-            try:
-                self.stdscr.addstr(bar_y, bar_x, " " * (bar_width + 20), curses.color_pair(1) if self.enabled else curses.color_pair(2))
-                self.stdscr.refresh()
-            except Exception:
-                pass
+            self.start_countdown(10, "Enabling:")
+            while self.countdown_active:
+                time.sleep(0.1)
             self.add_message("Enabling TX (Alt-N)...")
             if send_alt_n():
                 self.add_message("Alt-N sent - Tx toggled")
@@ -150,28 +142,9 @@ class Autotx73UI:
             self.add_message("Alt-N sent to disable TX.")
         else:
             self.add_message("Failed to send Alt-N to disable TX.")
-        # Show a 5-second countdown in the countdown bar area before sending Alt-H
-        max_y, max_x = self.stdscr.getmaxyx()
-        border_thickness = min(4, max((max_y - 1) // 2, 1), max((max_x - 1) // 2, 1))
-        bar_width = 20
-        bar_y = max_y - border_thickness // 2 - 1
-        bar_x = max_x // 2 - bar_width // 2
-        for i in range(6):
-            filled = int(bar_width * i / 5)
-            bar = "█" * filled + " " * (bar_width - filled)
-            try:
-                self.stdscr.addstr(bar_y, bar_x, bar, curses.color_pair(3))
-                self.stdscr.addstr(bar_y, bar_x + bar_width + 1, f" {i}/5s before Alt-H", curses.color_pair(4))
-                self.stdscr.refresh()
-            except Exception:
-                pass
-            time.sleep(1)
-        # Clear the bar area after countdown to border color
-        try:
-            self.stdscr.addstr(bar_y, bar_x, " " * (bar_width + 20), curses.color_pair(2))
-            self.stdscr.refresh()
-        except Exception:
-            pass
+        self.start_countdown(5, "Disabling:")
+        while self.countdown_active:
+            time.sleep(0.1)
         self.add_message("Sending Alt-H to halt TX...")
         self.send_alt_h()
         self.enabled = False
@@ -250,9 +223,27 @@ class Autotx73UI:
         except curses.error:
             pass
         # Dynamic message area: centered, up to 10 lines, never overlapping border or controls
-        msg_area_height = min(10, max_y - 2 * border_thickness - 6)
-        msg_area_top = border_thickness + (max_y - 2 * border_thickness - msg_area_height - 6) // 2
-        # Get the last msg_area_height messages, pad with empty strings if needed
+        msg_area_height = min(10, max_y - 2 * border_thickness - 7)
+        msg_area_top = border_thickness + (max_y - 2 * border_thickness - msg_area_height - 7) // 2
+        # Countdown bar: always drawn as part of main UI if active
+        if self.countdown_active:
+            bar_width = 30 if self.countdown_max >= 10 else 20
+            bar_y = max_y - border_thickness - 1  # Just above the border
+            bar_x = max_x // 2 - bar_width // 2
+            label = self.countdown_label
+            label_x = bar_x - len(label) - 2
+            try:
+                self.stdscr.addstr(bar_y, border_thickness, " " * (max_x - 2 * border_thickness), curses.color_pair(4))
+                self.stdscr.addstr(bar_y, label_x, label, curses.color_pair(4))
+                self.stdscr.addstr(bar_y, bar_x, " " * bar_width, curses.color_pair(4))
+                filled = int(bar_width * self.countdown_value / self.countdown_max) if self.countdown_max > 0 else bar_width
+                bar = "█" * filled
+                self.stdscr.addstr(bar_y, bar_x, bar.ljust(bar_width), curses.color_pair(3))
+                time_str = f"{self.countdown_value}/{self.countdown_max}s"
+                self.stdscr.addstr(bar_y, bar_x + bar_width + 2, time_str.ljust(len(f"{self.countdown_max}/{self.countdown_max}s")), curses.color_pair(4))
+            except curses.error:
+                pass
+        # Message area
         msgs_to_show = list(self.messages)[-msg_area_height:]
         msgs_to_show = ["" for _ in range(msg_area_height - len(msgs_to_show))] + msgs_to_show
         for i, msg in enumerate(msgs_to_show):
@@ -260,11 +251,11 @@ class Autotx73UI:
                 self.stdscr.addstr(msg_area_top + i, border_thickness + 2, msg.ljust(max_x - 2 * border_thickness - 4)[:max_x - 2 * border_thickness - 4], curses.color_pair(4))
             except curses.error:
                 pass
-        # Bottom: controls
+        # Bottom: controls (no status messages or bar here)
         status = "ENABLED" if self.enabled else "DISABLED"
         try:
             self.stdscr.addstr(max_y - border_thickness - 3, border_thickness + 2, f"System status: {status}", curses.color_pair(4))
-            self.stdscr.addstr(max_y - border_thickness - 2, border_thickness + 2, "[E]nable  [D]isable  [Q]uit", curses.color_pair(4))
+            self.stdscr.addstr(max_y - border_thickness - 2, border_thickness + 2, "[E]nable  [D]isable  [Q]uit".ljust(max_x - 2 * border_thickness - 4), curses.color_pair(4))
         except curses.error:
             pass
         self.stdscr.refresh()
@@ -273,8 +264,10 @@ class Autotx73UI:
         while self.running:
             c = self.stdscr.getch()
             if c in (ord('q'), ord('Q')):
+                if self.enabled:
+                    self.disable_system()
                 self.running = False
-                return  # Quit immediately
+                return  # Quit after system is fully disabled
             elif c in (ord('e'), ord('E')):
                 if not self.enabled:
                     self.enable_system()
