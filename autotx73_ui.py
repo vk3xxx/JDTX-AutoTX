@@ -7,6 +7,7 @@ import socket
 import re
 from collections import deque
 import os
+import struct
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -15,7 +16,7 @@ UDP_PORT = 2237
 # Regex patterns for QSO and CQ detection
 qso_start_pattern = re.compile(rf"\b{re.escape(CALLSIGN)}\b\s+([A-Z0-9]+)\b", re.IGNORECASE)
 qso_finish_pattern = re.compile(rf"\b{re.escape(CALLSIGN)}\b.*\b(RR?73|73)\b", re.IGNORECASE)
-cq_pattern = re.compile(rf"\bCQ\s+{re.escape(CALLSIGN)}\b", re.IGNORECASE)
+cq_pattern = re.compile(rf"FT8.*{re.escape(CALLSIGN)}", re.IGNORECASE)
 
 # Helper functions for keystrokes
 
@@ -124,6 +125,7 @@ def refocus_own_terminal(add_message=None):
 class Autotx73UI:
     def __init__(self, stdscr):
         self.stdscr = stdscr
+        self.tx_enabled = False  # Ensure this is set before threads start
         curses.start_color()
         curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)   # Enabled: white on red
@@ -222,23 +224,38 @@ class Autotx73UI:
         self.qso_partner = None
         self.cq_active = False
 
+    def parse_status_message(self, data):
+        try:
+            # Log the first 64 bytes after the type field for every UDP packet
+            with open('tx_debug.log', 'a') as f:
+                f.write("All bytes after type: " + " ".join(f"{b:02x}" for b in data[12:76]) + f" | Data: {data.hex()}\n")
+            # Set self.tx_enabled based on byte at offset 60 (data[60])
+            if len(data) > 60:
+                self.tx_enabled = data[60] == 1
+        except Exception:
+            pass
+
     def udp_listener(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(("0.0.0.0", UDP_PORT))
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        prev_tx_enabled = self.tx_enabled
         while self.running:
             try:
                 data, addr = sock.recvfrom(4096)
+                self.parse_status_message(data)
                 text = data.decode('ascii', errors='ignore')
             except Exception:
                 continue
             now = time.time()
-            # Detect CQ call from our callsign
-            if cq_pattern.search(text):
-                self.cq_active = True
+            # Force UI update on TX state change
+            if self.tx_enabled != prev_tx_enabled:
+                self.draw()
+            if self.tx_enabled and not prev_tx_enabled:
                 self.reset_timer()
-                self.add_message("CQ detected from us.")
-            # Detect start of QSO (your callsign followed by another callsign)
+                self.add_message("TX started (from status message). Timer reset.")
+            prev_tx_enabled = self.tx_enabled
+            # QSO logic remains
             match = qso_start_pattern.search(text)
             if match:
                 partner = match.group(1)
@@ -246,11 +263,25 @@ class Autotx73UI:
                     self.qso_partner = partner
                     self.add_message(f"QSO started with {partner}.")
                 self.reset_timer()
-            # Detect completion (your callsign and RR73 or 73)
             if self.qso_partner and qso_finish_pattern.search(text):
                 self.add_message(f"QSO with {self.qso_partner} finished.")
+                partner = self.qso_partner
                 self.qso_partner = None
                 self.reset_timer()
+                # Start post-QSO delay and re-enable TX in a background thread
+                def post_qso_reenable():
+                    self.add_message("Waiting 45 seconds before re-enabling TX...")
+                    self.start_countdown(45, "Post-QSO delay:")
+                    while self.countdown_active:
+                        time.sleep(0.1)
+                    self.add_message("Re-enabling TX (Alt-N) after QSO with {}...".format(partner))
+                    if send_alt_n():
+                        self.add_message("Alt-N sent - TX re-enabled after QSO.")
+                        self.reset_timer()
+                        refocus_own_terminal(self.add_message)
+                    else:
+                        self.add_message("Failed to send Alt-N after QSO.")
+                threading.Thread(target=post_qso_reenable, daemon=True).start()
 
     def draw(self):
         max_y, max_x = self.stdscr.getmaxyx()
@@ -278,12 +309,13 @@ class Autotx73UI:
                     self.stdscr.addstr(y, max_x - 1 - x, " ", color)
                 except curses.error:
                     pass
-        # Top right: timer
+        # Top right: timer and TX status
         elapsed = int(time.time() - self.last_tx_time)
         mins, secs = divmod(elapsed, 60)
         timer_str = f"Time since last TX: {mins:02d}:{secs:02d}"
+        tx_str = "TX: ON" if self.tx_enabled else "TX: OFF"
         try:
-            self.stdscr.addstr(0, max_x - len(timer_str) - 2, timer_str)
+            self.stdscr.addstr(0, max_x - len(timer_str) - len(tx_str) - 4, timer_str + "  " + tx_str)
         except curses.error:
             pass
         # Top left: QSO/CQ status
