@@ -95,6 +95,8 @@ class Autotx73Daemon:
         except Exception:
             pass
         self.add_message("System started in daemon mode. Use web UI to control.")
+        self.udp_debug_log = 'udp_debug.log'
+        self.udp_debug_max_size = 100 * 1024  # 100kB
 
     def add_message(self, msg):
         with self.lock:
@@ -154,6 +156,21 @@ class Autotx73Daemon:
         self.start_countdown(5, "Disabling:")
         threading.Thread(target=lambda: (time.sleep(5), after_disable_countdown()), daemon=True).start()
 
+    def log_udp_debug(self, msg):
+        try:
+            # Write message to log file
+            with open(self.udp_debug_log, 'a') as f:
+                f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
+            # Check file size and rotate if needed
+            if os.path.getsize(self.udp_debug_log) > self.udp_debug_max_size:
+                with open(self.udp_debug_log, 'rb') as f:
+                    f.seek(-self.udp_debug_max_size, os.SEEK_END)
+                    data = f.read()
+                with open(self.udp_debug_log, 'wb') as f:
+                    f.write(data)
+        except Exception:
+            pass
+
     def udp_listener(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(("0.0.0.0", UDP_PORT))
@@ -168,10 +185,10 @@ class Autotx73Daemon:
                 continue
             now = time.time()
             # Debug: log every received message
-            self.add_message(f"[DEBUG] UDP: {text.strip()}")
+            self.log_udp_debug(f"UDP: {text.strip()}")
             match = qso_start_pattern.search(text)
             if match:
-                self.add_message(f"[DEBUG] QSO start pattern matched: {match.group(0)}")
+                self.log_udp_debug(f"QSO start pattern matched: {match.group(0)}")
             if match:
                 partner = match.group(1)
                 if not self.qso_partner or self.qso_partner != partner:
@@ -182,7 +199,7 @@ class Autotx73Daemon:
                 self.reset_timer()
             finish_match = qso_finish_pattern.search(text)
             if finish_match:
-                self.add_message(f"[DEBUG] QSO finish pattern matched: {finish_match.group(0)}")
+                self.log_udp_debug(f"QSO finish pattern matched: {finish_match.group(0)}")
             if finish_match:
                 partner = self.qso_partner if self.qso_partner else "Unknown"
                 self.add_message(f"QSO with {partner} finished.")
