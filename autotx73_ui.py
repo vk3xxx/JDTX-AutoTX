@@ -193,13 +193,16 @@ class Autotx73UI:
             self.reset_timer()
             def after_enable_countdown():
                 self.add_message("Enabling TX (Alt-N)...")
-                if send_alt_n():
-                    self.add_message("Alt-N sent - Tx toggled")
-                    self.add_message("TX enabled (Alt-N sent). System is now active.")
-                    self.reset_timer()
-                    refocus_own_terminal(self.add_message)
+                if not self.tx_enabled:
+                    if send_alt_n():
+                        self.add_message("Alt-N sent - Tx toggled")
+                        self.add_message("TX enabled (Alt-N sent). System is now active.")
+                        self.tx_enabled = True
+                        self.reset_timer()
+                    else:
+                        self.add_message("Failed to send Alt-N (TX enable).")
                 else:
-                    self.add_message("Failed to send Alt-N (TX enable).")
+                    self.add_message("TX already enabled, not sending Alt-N again.")
             self.start_countdown(10, "Enabling:")
             threading.Thread(target=lambda: (time.sleep(10), after_enable_countdown()), daemon=True).start()
         else:
@@ -221,8 +224,9 @@ class Autotx73UI:
 
     def disable_system(self):
         self.add_message("System disabled by user. Sending Alt-N to turn off enable TX...")
-        if send_alt_n():
+        if not self.tx_enabled or send_alt_n():
             self.add_message("Alt-N sent to disable TX.")
+            self.tx_enabled = False
         else:
             self.add_message("Failed to send Alt-N to disable TX.")
         def after_disable_countdown():
@@ -286,12 +290,15 @@ class Autotx73UI:
                     while self.countdown_active:
                         time.sleep(0.1)
                     self.add_message(f"Re-enabling TX (Alt-N) after QSO with {partner}...")
-                    if send_alt_n():
-                        self.add_message("Alt-N sent - TX re-enabled after QSO.")
-                        self.reset_timer()
-                        refocus_own_terminal(self.add_message)
+                    if not self.tx_enabled:
+                        if send_alt_n():
+                            self.add_message("Alt-N sent - TX re-enabled after QSO.")
+                            self.tx_enabled = True
+                            self.reset_timer()
+                        else:
+                            self.add_message("Failed to send Alt-N after QSO.")
                     else:
-                        self.add_message("Failed to send Alt-N after QSO.")
+                        self.add_message("TX already enabled, not sending Alt-N again.")
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
 
     def write_status(self):
