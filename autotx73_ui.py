@@ -170,6 +170,8 @@ class Autotx73UI:
         self.script_timer_thread.start()
 
     def add_message(self, msg):
+        if msg.startswith('[DEBUG]'):
+            return
         with self.lock:
             self.messages.append(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
