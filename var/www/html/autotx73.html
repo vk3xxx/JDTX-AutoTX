@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AutoTX73 UI</title>
+    <style>
+        body { font-family: monospace; background: #222; color: #eee; }
+        .panel { background: #333; border: 2px solid #900; border-radius: 10px; padding: 20px; width: 500px; margin: 40px auto; }
+        .status { font-size: 1.2em; margin-bottom: 10px; }
+        .controls button { margin: 5px; padding: 10px 20px; font-size: 1em; }
+        .messages { background: #222; border: 1px solid #555; padding: 10px; height: 120px; overflow-y: auto; margin-top: 10px; }
+        .qso { color: #0f0; }
+        .txon { color: #fff; background: #900; padding: 2px 8px; border-radius: 5px; }
+        .txoff { color: #fff; background: #090; padding: 2px 8px; border-radius: 5px; }
+    </style>
+    <script>
+        function fetchStatus() {
+            fetch('/cgi-bin/autotx73_control.py')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('enabled').textContent = data.enabled ? 'ENABLED' : 'DISABLED';
+                    document.getElementById('enabled').style.color = data.enabled ? '#fff' : '#aaa';
+                    document.getElementById('tx').textContent = data.tx ? 'TX: ON' : 'TX: OFF';
+                    document.getElementById('tx').className = data.tx ? 'txon' : 'txoff';
+                    document.getElementById('qso').textContent = data.qso_partner ? 'QSO: ' + data.qso_partner : 'QSO: None';
+                    let msgs = data.messages || [];
+                    document.getElementById('messages').innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
+                });
+        }
+        function sendCommand(cmd) {
+            fetch('/cgi-bin/autotx73_control.py?action=' + cmd)
+                .then(r => r.json())
+                .then(fetchStatus);
+        }
+        setInterval(fetchStatus, 1000);
+        window.onload = fetchStatus;
+    </script>
+</head>
+<body>
+    <div class="panel">
+        <div class="status">
+            <span id="enabled"></span> | <span id="tx"></span> | <span id="qso"></span>
+        </div>
+        <div class="controls">
+            <button onclick="sendCommand('enable')">Enable</button>
+            <button onclick="sendCommand('disable')">Disable</button>
+            <button onclick="sendCommand('quit')">Quit</button>
+        </div>
+        <div class="messages" id="messages"></div>
+    </div>
+</body>
+</html> 
