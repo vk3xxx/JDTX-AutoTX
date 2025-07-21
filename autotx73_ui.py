@@ -295,10 +295,13 @@ class Autotx73UI:
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
 
     def write_status(self):
-        now = time.time()
-        elapsed = int(now - self.last_tx_time)
-        mins, secs = divmod(elapsed, 60)
-        qso_timer_str = f"Last QSO: {mins}m {secs}s"
+        if self.enabled:
+            now = time.time()
+            elapsed = int(now - self.last_tx_time)
+            mins, secs = divmod(elapsed, 60)
+            qso_timer_str = f"Last QSO: {mins}m {secs}s"
+        else:
+            qso_timer_str = ""
         status = {
             'enabled': self.enabled,
             'tx': self.tx_enabled,
