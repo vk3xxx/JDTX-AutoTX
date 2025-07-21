@@ -209,8 +209,7 @@ class Autotx73UI:
             def after_enable_countdown():
                 self.add_message("Enabling TX (Alt-N)...")
                 if not self.tx_enabled:
-                    if send_alt_n():
-                        self.add_message("Alt-N sent - Tx toggled")
+                    if self.ensure_tx_state(True):
                         self.add_message("TX enabled (Alt-N sent). System is now active.")
                         self.tx_enabled = True
                         self.reset_timer()
@@ -239,7 +238,7 @@ class Autotx73UI:
 
     def disable_system(self):
         self.add_message("System disabled by user. Sending Alt-N to turn off enable TX...")
-        if not self.tx_enabled or send_alt_n():
+        if not self.tx_enabled or self.ensure_tx_state(False):
             self.add_message("Alt-N sent to disable TX.")
             self.tx_enabled = False
         else:
@@ -342,7 +341,7 @@ class Autotx73UI:
                         # Ensure TX is off before restarting CQ
                         if self.tx_enabled:
                             self.add_message("Disabling TX before CQ restart (60-min rule)...")
-                            if send_alt_n():
+                            if self.ensure_tx_state(False):
                                 self.tx_enabled = False
                                 self.add_message("TX disabled (Alt-N sent).")
                             else:
@@ -352,7 +351,7 @@ class Autotx73UI:
                             self.add_message("CQ enabled (Alt-6 sent). Waiting 2 seconds...")
                             time.sleep(2)
                             self.add_message("Enabling TX (Alt-N) after CQ restart...")
-                            if send_alt_n():
+                            if self.ensure_tx_state(True):
                                 self.tx_enabled = True
                                 self.add_message("TX enabled (Alt-N sent) after CQ restart.")
                             else:
@@ -366,7 +365,7 @@ class Autotx73UI:
                         while self.countdown_active:
                             time.sleep(0.1)
                         if not self.tx_enabled:
-                            if send_alt_n():
+                            if self.ensure_tx_state(True):
                                 self.add_message("Alt-N sent - TX enabled after QSO.")
                                 self.tx_enabled = True
                                 self.reset_timer()
@@ -384,7 +383,7 @@ class Autotx73UI:
                     self.add_message("QSO started but not completed for more than 6 minutes. Resetting to CQ with TX enabled...")
                     if self.tx_enabled:
                         self.add_message("Disabling TX before switching to CQ...")
-                        if send_alt_n():
+                        if self.ensure_tx_state(False):
                             self.tx_enabled = False
                             self.add_message("TX disabled (Alt-N sent).")
                         else:
@@ -394,7 +393,7 @@ class Autotx73UI:
                         self.add_message("CQ enabled (Alt-6 sent). Waiting 2 seconds...")
                         time.sleep(2)
                         self.add_message("Enabling TX (Alt-N)...")
-                        if send_alt_n():
+                        if self.ensure_tx_state(True):
                             self.tx_enabled = True
                             self.add_message("TX enabled (Alt-N sent). Back to CQ mode.")
                         else:
@@ -419,12 +418,27 @@ class Autotx73UI:
         while self.running:
             if self.enabled and not self.tx_enabled:
                 self.add_message("[TX Monitor] TX is OFF but should be ON. Re-enabling TX (Alt-N)...")
-                if send_alt_n():
+                if self.ensure_tx_state(True):
                     self.tx_enabled = True
                     self.add_message("[TX Monitor] TX enabled (Alt-N sent).")
                 else:
                     self.add_message("[TX Monitor] Failed to enable TX (Alt-N).")
             time.sleep(30)
+
+    def ensure_tx_state(self, desired_on):
+        if desired_on and self.tx_enabled:
+            self.add_message("[TX Check] TX already enabled, not sending Alt-N.")
+            return True
+        if not desired_on and not self.tx_enabled:
+            self.add_message("[TX Check] TX already disabled, not sending Alt-N.")
+            return True
+        if send_alt_n():
+            self.tx_enabled = desired_on
+            self.add_message(f"[TX Check] Alt-N sent, TX now {'enabled' if desired_on else 'disabled'}.")
+            return True
+        else:
+            self.add_message(f"[TX Check] Failed to send Alt-N to {'enable' if desired_on else 'disable'} TX.")
+            return False
 
     def write_status(self):
         if self.enabled:

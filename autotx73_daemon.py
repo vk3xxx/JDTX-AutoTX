@@ -386,6 +386,21 @@ class Autotx73Daemon:
                     self.add_message("[TX Monitor] Failed to enable TX (Alt-N).")
             time.sleep(30)
 
+    def ensure_tx_state(self, desired_on):
+        if desired_on and self.tx_enabled:
+            self.add_message("[TX Check] TX already enabled, not sending Alt-N.")
+            return True
+        if not desired_on and not self.tx_enabled:
+            self.add_message("[TX Check] TX already disabled, not sending Alt-N.")
+            return True
+        if send_alt_n():
+            self.tx_enabled = desired_on
+            self.add_message(f"[TX Check] Alt-N sent, TX now {'enabled' if desired_on else 'disabled'}.")
+            return True
+        else:
+            self.add_message(f"[TX Check] Failed to send Alt-N to {'enable' if desired_on else 'disable'} TX.")
+            return False
+
 if __name__ == "__main__":
     Autotx73Daemon()
     while True:
