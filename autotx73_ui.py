@@ -151,6 +151,12 @@ class Autotx73UI:
         self.add_message("System started. Press E to enable, D to disable, Q to quit.")
         self.status_thread = threading.Thread(target=self.status_and_command_worker, daemon=True)
         self.status_thread.start()
+        # Clear status and command files on startup
+        try:
+            open('/tmp/autotx73_status.json', 'w').close()
+            open('/tmp/autotx73_command.txt', 'w').close()
+        except Exception:
+            pass
 
     def add_message(self, msg):
         with self.lock:
