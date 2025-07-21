@@ -94,7 +94,6 @@ while True:
 
     # Detect CQ call from our callsign
     if cq_pattern.search(text):
-        last_qso_time = now  # Reset timer on CQ
         if in_qso:
             print(f"QSO aborted: CQ detected from {CALLSIGN} during QSO with {other_callsign if 'other_callsign' in locals() else 'UNKNOWN'}")
             in_qso = False
@@ -108,7 +107,7 @@ while True:
         start_time = time.strftime('%Y-%m-%d %H:%M:%S')
         print(f"🟢 --- New QSO started with {other_callsign} at {start_time} ---")
         in_qso = True
-        last_qso_time = now  # Reset timer on QSO start
+        last_qso_time = now  # Reset timer ONLY on QSO start
     # If already in QSO, check if the callsign changes
     elif match and in_qso:
         new_callsign = match.group(1)
@@ -122,7 +121,7 @@ while True:
             last_complete_time = now
             complete_time = time.strftime('%Y-%m-%d %H:%M:%S')
             print(f"✅ --- QSO finished at {complete_time} ---")
-            last_qso_time = now  # Reset timer on QSO finish
+            # Do NOT reset last_qso_time here
             # After 60 minutes of script activity, randomize CQ re-enable
             if now - script_start_time > 3600:
                 delay = random.randint(180, 600)
@@ -147,6 +146,7 @@ while True:
                 send_alt_n()
                 print("--- TX enabled (Alt-N sent to JTDX) ---")
                 script_start_time = time.time()  # Reset 60-min timer after random shutdown
+                last_qso_time = time.time()  # Reset timer ONLY when TX is enabled
             else:
                 print("Waiting 45 seconds before enabling TX...")
                 for i in range(46):
@@ -157,8 +157,8 @@ while True:
                 print()
                 send_alt_n()
                 print("--- TX enabled (Alt-N sent to JTDX) ---")
+                last_qso_time = time.time()  # Reset timer ONLY when TX is enabled
             in_qso = False
-            last_qso_time = time.time()
             cq_restart_active = False
             cq_seen_during_restart = False
             cq_restart_start_time = None
@@ -170,7 +170,7 @@ while True:
         cq_restart_active = True
         cq_restart_start_time = now
         cq_seen_during_restart = False
-        last_qso_time = now  # Reset timer so it won't fire again for another 5 minutes
+        # Do NOT reset last_qso_time here
 
     # Only monitor for CQ during the 1-min window after Alt-6
     if cq_restart_active and cq_restart_start_time is not None:
@@ -181,15 +181,15 @@ while True:
                 cq_restart_active = False
                 cq_seen_during_restart = False
                 cq_restart_start_time = None
-                last_qso_time = now
+                last_qso_time = now  # Reset timer ONLY if TX is enabled (CQ detected means TX is on)
         elif now - cq_restart_start_time > 60:
             # 1 min passed, no CQ detected
             if not cq_seen_during_restart:
                 print("CQ restart: No CQ detected in 1 minute, sending Alt-N to enable TX.")
-                send_alt_n()
-                print("No CQ detected, TX enabled. Timers reset.")
+            send_alt_n()
+            print("No CQ detected, TX enabled. Timers reset.")
             cq_restart_active = False
             cq_seen_during_restart = False
             cq_restart_start_time = None
-            last_qso_time = now
+            last_qso_time = now  # Reset timer ONLY when TX is enabled
 

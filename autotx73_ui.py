@@ -223,6 +223,7 @@ class Autotx73UI:
         self.enabled = False
         self.qso_partner = None
         self.cq_active = False
+        refocus_own_terminal(self.add_message)
 
     def parse_status_message(self, data):
         try:
@@ -253,7 +254,6 @@ class Autotx73UI:
                 self.draw()
             if self.tx_enabled and not prev_tx_enabled:
                 self.reset_timer()
-                self.add_message("TX started (from status message). Timer reset.")
             prev_tx_enabled = self.tx_enabled
             # QSO logic remains
             match = qso_start_pattern.search(text)
@@ -285,7 +285,7 @@ class Autotx73UI:
 
     def draw(self):
         max_y, max_x = self.stdscr.getmaxyx()
-        border_thickness = min(4, max((max_y - 1) // 2, 1), max((max_x - 1) // 2, 1))
+        border_thickness = 1  # Thinner top and bottom borders
         color = curses.color_pair(1) if self.enabled else curses.color_pair(2)
         # Fill main area with white background
         for y in range(border_thickness, max_y - border_thickness):
@@ -294,13 +294,12 @@ class Autotx73UI:
             except curses.error:
                 pass
         # Top and bottom thick rows
-        for y in range(border_thickness):
-            for x in range(max_x):
-                try:
-                    self.stdscr.addstr(y, x, " ", color)
-                    self.stdscr.addstr(max_y - 1 - y, x, " ", color)
-                except curses.error:
-                    pass
+        for x in range(max_x):
+            try:
+                self.stdscr.addstr(0, x, " ", color)
+                self.stdscr.addstr(max_y - 1, x, " ", color)
+            except curses.error:
+                pass
         # Left and right thick columns
         for y in range(border_thickness, max_y - border_thickness):
             for x in range(border_thickness):
