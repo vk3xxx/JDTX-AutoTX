@@ -273,6 +273,8 @@ class Autotx73UI:
             except Exception:
                 continue
             now = time.time()
+            # Debug: log every received message
+            self.add_message(f"[DEBUG] UDP: {text.strip()}")
             # Force UI update on TX state change
             if self.tx_enabled != prev_tx_enabled:
                 self.draw()
@@ -282,6 +284,8 @@ class Autotx73UI:
             # QSO logic remains
             match = qso_start_pattern.search(text)
             if match:
+                self.add_message(f"[DEBUG] QSO start pattern matched: {match.group(0)}")
+            if match:
                 partner = match.group(1)
                 if not self.qso_partner or self.qso_partner != partner:
                     self.qso_partner = partner
@@ -289,7 +293,10 @@ class Autotx73UI:
                 self.qso_active = True
                 self.qso_start_time = time.time()  # Only reset here
                 self.reset_timer()
-            if qso_finish_pattern.search(text):
+            finish_match = qso_finish_pattern.search(text)
+            if finish_match:
+                self.add_message(f"[DEBUG] QSO finish pattern matched: {finish_match.group(0)}")
+            if finish_match:
                 partner = self.qso_partner if self.qso_partner else "Unknown"
                 self.add_message(f"QSO with {partner} finished.")
                 self.last_qso_partner = partner

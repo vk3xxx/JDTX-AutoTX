@@ -165,10 +165,11 @@ class Autotx73Daemon:
             except Exception:
                 continue
             now = time.time()
-            if self.tx_enabled and not prev_tx_enabled:
-                self.reset_timer()
-            prev_tx_enabled = self.tx_enabled
+            # Debug: log every received message
+            self.add_message(f"[DEBUG] UDP: {text.strip()}")
             match = qso_start_pattern.search(text)
+            if match:
+                self.add_message(f"[DEBUG] QSO start pattern matched: {match.group(0)}")
             if match:
                 partner = match.group(1)
                 if not self.qso_partner or self.qso_partner != partner:
@@ -177,7 +178,10 @@ class Autotx73Daemon:
                 self.qso_active = True
                 self.qso_start_time = time.time()  # Only reset here
                 self.reset_timer()
-            if qso_finish_pattern.search(text):
+            finish_match = qso_finish_pattern.search(text)
+            if finish_match:
+                self.add_message(f"[DEBUG] QSO finish pattern matched: {finish_match.group(0)}")
+            if finish_match:
                 partner = self.qso_partner if self.qso_partner else "Unknown"
                 self.add_message(f"QSO with {partner} finished.")
                 self.last_qso_partner = partner
