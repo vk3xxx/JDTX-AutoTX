@@ -291,7 +291,11 @@ class Autotx73UI:
             'enabled': self.enabled,
             'tx': self.tx_enabled,
             'qso_partner': self.qso_partner,
-            'messages': list(self.messages)[-10:]
+            'messages': list(self.messages)[-10:],
+            'countdown_active': self.countdown_active,
+            'countdown_max': self.countdown_max,
+            'countdown_value': self.countdown_value,
+            'countdown_label': self.countdown_label
         }
         try:
             with open('/tmp/autotx73_status.json', 'w') as f:
@@ -305,12 +309,10 @@ class Autotx73UI:
             try:
                 with open(command_file) as f:
                     cmd = f.read().strip()
-                if cmd == 'enable':
+                if cmd == 'enable' and not self.enabled:
                     self.enable_system()
-                elif cmd == 'disable':
+                elif cmd == 'disable' and self.enabled:
                     self.disable_system()
-                elif cmd == 'quit':
-                    self.running = False
                 os.remove(command_file)
             except Exception:
                 pass

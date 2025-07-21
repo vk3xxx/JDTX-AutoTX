@@ -11,6 +11,10 @@
         .qso { color: #0f0; }
         .txon { color: #fff; background: #900; padding: 4px 16px; border-radius: 10px; }
         .txoff { color: #fff; background: #090; padding: 4px 16px; border-radius: 10px; }
+        .countdown-bar-bg { background: #444; border-radius: 10px; width: 100%; height: 48px; margin: 20px 0; position: relative; }
+        .countdown-bar { background: #0f0; height: 100%; border-radius: 10px; transition: width 0.5s; }
+        .countdown-label { font-size: 2em; margin-bottom: 10px; }
+        .countdown-time { position: absolute; right: 20px; top: 8px; font-size: 2em; color: #222; font-weight: bold; }
     </style>
     <script>
         function fetchStatus() {
@@ -24,6 +28,16 @@
                     document.getElementById('qso').textContent = data.qso_partner ? 'QSO: ' + data.qso_partner : 'QSO: None';
                     let msgs = data.messages || [];
                     document.getElementById('messages').innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
+                    // Countdown
+                    if (data.countdown_active) {
+                        document.getElementById('countdown').style.display = 'block';
+                        document.getElementById('countdown-label').textContent = data.countdown_label || '';
+                        let percent = data.countdown_max > 0 ? (data.countdown_value / data.countdown_max) * 100 : 0;
+                        document.getElementById('countdown-bar').style.width = percent + '%';
+                        document.getElementById('countdown-time').textContent = `${data.countdown_value}/${data.countdown_max}s`;
+                    } else {
+                        document.getElementById('countdown').style.display = 'none';
+                    }
                 });
         }
         function sendCommand(cmd) {
@@ -39,6 +53,13 @@
     <div class="panel">
         <div class="status">
             <span id="enabled"></span> | <span id="tx"></span> | <span id="qso"></span>
+        </div>
+        <div id="countdown" style="display:none;">
+            <div class="countdown-label" id="countdown-label"></div>
+            <div class="countdown-bar-bg">
+                <div class="countdown-bar" id="countdown-bar" style="width:0%"></div>
+                <span class="countdown-time" id="countdown-time"></span>
+            </div>
         </div>
         <div class="controls">
             <button onclick="sendCommand('enable')">Enable</button>
