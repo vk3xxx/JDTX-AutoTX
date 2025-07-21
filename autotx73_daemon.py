@@ -92,6 +92,8 @@ class Autotx73Daemon:
         self.udp_thread.start()
         self.script_timer_thread = threading.Thread(target=self.script_timer_monitor, daemon=True)
         self.script_timer_thread.start()
+        self.tx_monitor = threading.Thread(target=self.tx_monitor_thread, daemon=True)
+        self.tx_monitor.start()
         # Clear status and command files on startup
         try:
             open('/tmp/autotx73_status.json', 'w').close()
@@ -372,6 +374,17 @@ class Autotx73Daemon:
                 else:
                     self.script_timer_triggered = True
             time.sleep(5)
+
+    def tx_monitor_thread(self):
+        while self.running:
+            if self.enabled and not self.tx_enabled:
+                self.add_message("[TX Monitor] TX is OFF but should be ON. Re-enabling TX (Alt-N)...")
+                if send_alt_n():
+                    self.tx_enabled = True
+                    self.add_message("[TX Monitor] TX enabled (Alt-N sent).")
+                else:
+                    self.add_message("[TX Monitor] Failed to enable TX (Alt-N).")
+            time.sleep(30)
 
 if __name__ == "__main__":
     Autotx73Daemon()

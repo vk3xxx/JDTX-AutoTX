@@ -169,6 +169,8 @@ class Autotx73UI:
         self.pending_script_timer_action = False
         self.script_timer_thread = threading.Thread(target=self.script_timer_monitor, daemon=True)
         self.script_timer_thread.start()
+        self.tx_monitor = threading.Thread(target=self.tx_monitor_thread, daemon=True)
+        self.tx_monitor.start()
 
     def add_message(self, msg):
         if msg.startswith('[DEBUG]'):
@@ -412,6 +414,17 @@ class Autotx73UI:
                 else:
                     self.script_timer_triggered = True
             time.sleep(5)
+
+    def tx_monitor_thread(self):
+        while self.running:
+            if self.enabled and not self.tx_enabled:
+                self.add_message("[TX Monitor] TX is OFF but should be ON. Re-enabling TX (Alt-N)...")
+                if send_alt_n():
+                    self.tx_enabled = True
+                    self.add_message("[TX Monitor] TX enabled (Alt-N sent).")
+                else:
+                    self.add_message("[TX Monitor] Failed to enable TX (Alt-N).")
+            time.sleep(30)
 
     def write_status(self):
         if self.enabled:
