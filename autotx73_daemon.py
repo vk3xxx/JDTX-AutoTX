@@ -82,6 +82,8 @@ class Autotx73Daemon:
         self.qso_monitor_thread = threading.Thread(target=self.qso_inactivity_monitor, daemon=True)
         self.qso_monitor_thread.start()
         self.script_start_time = time.time()
+        self.script_timer_triggered = False
+        self.pending_script_timer_action = False
         self.status_thread = threading.Thread(target=self.status_and_command_worker, daemon=True)
         self.status_thread.start()
         self.udp_thread = threading.Thread(target=self.udp_listener, daemon=True)
