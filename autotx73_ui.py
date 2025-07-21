@@ -275,11 +275,14 @@ class Autotx73UI:
                 text = data.decode('ascii', errors='ignore')
                 # Detect TX enable/disable from UDP message
                 tx_state = udp_message_funct.decode_jtdx_tx_enable(data)
-                if tx_state is not None:
-                    if tx_state == "on" and not self.tx_enabled:
+                if tx_state == "on":
+                    if not self.tx_enabled:
                         self.add_message("[UDP] TX enabled detected from UDP message.")
-                    elif tx_state == "off" and self.tx_enabled:
+                    self.tx_enabled = True
+                elif tx_state == "off":
+                    if self.tx_enabled:
                         self.add_message("[UDP] TX disabled detected from UDP message.")
+                    self.tx_enabled = False
             except Exception:
                 continue
             now = time.time()
