@@ -94,6 +94,7 @@ class Autotx73Daemon:
         self.script_timer_thread.start()
         self.tx_monitor = threading.Thread(target=self.tx_monitor_thread, daemon=True)
         self.tx_monitor.start()
+        self.tx_forced_off = False
         # Clear status and command files on startup
         try:
             open('/tmp/autotx73_status.json', 'w').close()
@@ -264,14 +265,15 @@ class Autotx73Daemon:
                         self.script_start_time = time.time()
                     else:
                         self.add_message("Waiting 45 seconds before enabling TX...")
+                        self.tx_forced_off = True
                         self.start_countdown(45, "Post-QSO delay:")
                         while self.countdown_active:
                             time.sleep(0.1)
+                        self.tx_forced_off = False
                         if not self.tx_enabled:
-                            if send_alt_n():
+                            if self.ensure_tx_state(True):
                                 self.add_message("Alt-N sent - TX enabled after QSO.")
                                 self.tx_enabled = True
-                                self.reset_timer()
                             else:
                                 self.add_message("Failed to send Alt-N after QSO.")
                         else:
@@ -377,9 +379,9 @@ class Autotx73Daemon:
 
     def tx_monitor_thread(self):
         while self.running:
-            if self.enabled and not self.tx_enabled:
+            if self.enabled and not self.tx_enabled and not self.tx_forced_off:
                 self.add_message("[TX Monitor] TX is OFF but should be ON. Re-enabling TX (Alt-N)...")
-                if send_alt_n():
+                if self.ensure_tx_state(True):
                     self.tx_enabled = True
                     self.add_message("[TX Monitor] TX enabled (Alt-N sent).")
                 else:
@@ -387,6 +389,9 @@ class Autotx73Daemon:
             time.sleep(30)
 
     def ensure_tx_state(self, desired_on):
+        if self.tx_forced_off and desired_on:
+            self.add_message("[TX Check] TX is in a forced-off period, not re-enabling.")
+            return False
         if desired_on and self.tx_enabled:
             self.add_message("[TX Check] TX already enabled, not sending Alt-N.")
             return True
