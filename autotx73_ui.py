@@ -315,14 +315,14 @@ class Autotx73UI:
         timer_str = f"Time since last TX: {mins:02d}:{secs:02d}"
         tx_str = "TX: ON" if self.tx_enabled else "TX: OFF"
         try:
-            self.stdscr.addstr(0, max_x - len(timer_str) - len(tx_str) - 4, timer_str + "  " + tx_str)
+            self.stdscr.addstr(0, max_x - len(timer_str) - len(tx_str) - 4, timer_str + "  " + tx_str, curses.color_pair(4))
         except curses.error:
             pass
         # Top left: QSO/CQ status
         qso_str = f"QSO: {self.qso_partner}" if self.qso_partner else "QSO: None"
         cq_str = "CQ: ACTIVE" if self.cq_active else "CQ: -"
         try:
-            self.stdscr.addstr(0, border_thickness + 2, qso_str + "   " + cq_str)
+            self.stdscr.addstr(0, border_thickness + 2, qso_str + "   " + cq_str, curses.color_pair(4))
         except curses.error:
             pass
         # Dynamic message area: centered, up to 10 lines, never overlapping border or controls
