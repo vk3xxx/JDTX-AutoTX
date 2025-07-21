@@ -123,7 +123,9 @@ class Autotx73Daemon:
         self.enabled = True
         self.add_message("Enabling system: Sending Alt-6 (CQ)...")
         if send_alt_6():
-            self.add_message("Alt-6 sent (CQ enabled). Waiting 10 seconds...")
+            self.add_message("Alt-6 sent (CQ enabled). Waiting 2 seconds before proceeding...")
+            time.sleep(2)
+            self.add_message("Waiting 10 seconds before enabling TX...")
             self.reset_timer()
             def after_enable_countdown():
                 self.add_message("Enabling TX (Alt-N)...")
