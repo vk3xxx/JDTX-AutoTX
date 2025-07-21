@@ -8,6 +8,7 @@ import re
 from collections import deque
 import os
 import struct
+import json
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -148,6 +149,8 @@ class Autotx73UI:
         self.udp_thread = threading.Thread(target=self.udp_listener, daemon=True)
         self.udp_thread.start()
         self.add_message("System started. Press E to enable, D to disable, Q to quit.")
+        self.status_thread = threading.Thread(target=self.status_and_command_worker, daemon=True)
+        self.status_thread.start()
 
     def add_message(self, msg):
         with self.lock:
@@ -282,6 +285,41 @@ class Autotx73UI:
                     else:
                         self.add_message("Failed to send Alt-N after QSO.")
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
+
+    def write_status(self):
+        status = {
+            'enabled': self.enabled,
+            'tx': self.tx_enabled,
+            'qso_partner': self.qso_partner,
+            'messages': list(self.messages)[-10:]
+        }
+        try:
+            with open('/tmp/autotx73_status.json', 'w') as f:
+                json.dump(status, f)
+        except Exception:
+            pass
+
+    def check_command(self):
+        command_file = '/tmp/autotx73_command.txt'
+        if os.path.exists(command_file):
+            try:
+                with open(command_file) as f:
+                    cmd = f.read().strip()
+                if cmd == 'enable':
+                    self.enable_system()
+                elif cmd == 'disable':
+                    self.disable_system()
+                elif cmd == 'quit':
+                    self.running = False
+                os.remove(command_file)
+            except Exception:
+                pass
+
+    def status_and_command_worker(self):
+        while self.running:
+            self.write_status()
+            self.check_command()
+            time.sleep(1)
 
     def draw(self):
         max_y, max_x = self.stdscr.getmaxyx()
