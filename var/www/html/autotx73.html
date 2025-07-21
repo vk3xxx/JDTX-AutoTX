@@ -292,8 +292,6 @@
                     }
                     // TX indicator
                     let txIndicator = document.getElementById('tx-indicator');
-                    let txDebug = document.getElementById('tx-debug');
-                    txDebug.textContent = 'TX: ' + data.tx;
                     if (data.tx) {
                         txIndicator.classList.add('on');
                         txIndicator.classList.remove('off');
@@ -315,7 +313,6 @@
 <body>
     <div class="panel" style="position:relative;">
         <div id="tx-indicator" class="tx-indicator off" title="TX Enable Indicator"></div>
-        <span id="tx-debug" style="position:absolute;top:24px;right:90px;color:#fff;font-size:1.1em;background:#222;padding:2px 8px;border-radius:6px;z-index:11;">TX: ?</span>
         <div class="status">
             <div class="status-row-flex">
                 <div class="status-qsos">
