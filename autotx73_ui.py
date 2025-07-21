@@ -125,6 +125,7 @@ def refocus_own_terminal(add_message=None):
 
 class Autotx73UI:
     def __init__(self, stdscr):
+        self.last_qso_partner = None
         self.stdscr = stdscr
         self.tx_enabled = False  # Ensure this is set before threads start
         curses.start_color()
@@ -157,7 +158,6 @@ class Autotx73UI:
             open('/tmp/autotx73_command.txt', 'w').close()
         except Exception:
             pass
-        self.last_qso_partner = None
 
     def add_message(self, msg):
         with self.lock:
