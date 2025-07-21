@@ -327,11 +327,26 @@ class Autotx73Daemon:
             if self.enabled and self.qso_active and self.qso_start_time:
                 elapsed = time.time() - self.qso_start_time
                 if elapsed > 360:
-                    self.add_message("QSO started but not completed for more than 6 minutes. Sending disable...")
-                    self.disable_system()
-                    time.sleep(60)
-                    self.add_message("Re-enabling system after QSO timeout...")
-                    self.enable_system()
+                    self.add_message("QSO started but not completed for more than 6 minutes. Resetting to CQ with TX enabled...")
+                    if self.tx_enabled:
+                        self.add_message("Disabling TX before switching to CQ...")
+                        if send_alt_n():
+                            self.tx_enabled = False
+                            self.add_message("TX disabled (Alt-N sent).")
+                        else:
+                            self.add_message("Failed to disable TX (Alt-N). Proceeding anyway.")
+                    self.add_message("Switching CQ on (Alt-6)...")
+                    if send_alt_6():
+                        self.add_message("CQ enabled (Alt-6 sent). Waiting 2 seconds...")
+                        time.sleep(2)
+                        self.add_message("Enabling TX (Alt-N)...")
+                        if send_alt_n():
+                            self.tx_enabled = True
+                            self.add_message("TX enabled (Alt-N sent). Back to CQ mode.")
+                        else:
+                            self.add_message("Failed to enable TX (Alt-N) after CQ.")
+                    else:
+                        self.add_message("Failed to enable CQ (Alt-6).")
                     # Reset QSO state so this doesn't fire again
                     self.qso_active = False
                     self.qso_start_time = None
