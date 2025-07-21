@@ -157,6 +157,7 @@ class Autotx73UI:
             open('/tmp/autotx73_command.txt', 'w').close()
         except Exception:
             pass
+        self.last_qso_partner = None
 
     def add_message(self, msg):
         with self.lock:
@@ -275,6 +276,7 @@ class Autotx73UI:
             if qso_finish_pattern.search(text):
                 partner = self.qso_partner if self.qso_partner else "Unknown"
                 self.add_message(f"QSO with {partner} finished.")
+                self.last_qso_partner = partner
                 self.qso_partner = None
                 self.reset_timer()
                 # Start post-QSO delay and re-enable TX in a background thread
@@ -297,6 +299,7 @@ class Autotx73UI:
             'enabled': self.enabled,
             'tx': self.tx_enabled,
             'qso_partner': self.qso_partner,
+            'last_qso_partner': self.last_qso_partner,
             'messages': list(self.messages)[-10:],
             'countdown_active': self.countdown_active,
             'countdown_max': self.countdown_max,
