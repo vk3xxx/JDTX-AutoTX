@@ -252,7 +252,7 @@
                     }
                     // QSO timer
                     if (data.qso_timer_str) {
-                        document.getElementById('qso-timer').textContent = data.qso_timer_str;
+                        document.getElementById('qso-timer').textContent = 'QSO Timer: ' + data.qso_timer_str.replace(/^Last QSO: /, '');
                     } else {
                         document.getElementById('qso-timer').textContent = '';
                     }
