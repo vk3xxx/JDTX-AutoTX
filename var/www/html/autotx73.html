@@ -78,6 +78,14 @@
             font-weight: 500;
             margin-right: 0.5em;
         }
+        .script-timer {
+            color: #90caf9;
+            font-size: 0.95em;
+            font-family: inherit;
+            font-weight: 500;
+            display: block;
+            margin-top: 0.2em;
+        }
         .messages-controls-row {
             display: flex;
             flex-direction: row;
@@ -206,6 +214,27 @@
             background: #fff;
             pointer-events: auto;
         }
+        .tx-indicator {
+            position: absolute;
+            top: 24px;
+            right: 48px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid #222;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            background: #43a047; /* default green */
+            transition: background 0.3s, box-shadow 0.2s;
+            z-index: 10;
+        }
+        .tx-indicator.on {
+            background: #e53935;
+            box-shadow: 0 0 16px 2px #e53935;
+        }
+        .tx-indicator.off {
+            background: #43a047;
+            box-shadow: 0 0 16px 2px #43a047;
+        }
         @media (max-width: 900px) {
             .panel { width: 98vw; padding: 1vw; }
             .clublog-iframe-wrapper { aspect-ratio: 16/10; }
@@ -256,6 +285,20 @@
                     } else {
                         document.getElementById('qso-timer').textContent = '';
                     }
+                    if (data.script_timer_str) {
+                        document.getElementById('script-timer').textContent = data.script_timer_str;
+                    } else {
+                        document.getElementById('script-timer').textContent = '';
+                    }
+                    // TX indicator
+                    let txIndicator = document.getElementById('tx-indicator');
+                    if (data.tx) {
+                        txIndicator.classList.add('on');
+                        txIndicator.classList.remove('off');
+                    } else {
+                        txIndicator.classList.add('off');
+                        txIndicator.classList.remove('on');
+                    }
                 });
         }
         function sendCommand(cmd) {
@@ -268,7 +311,8 @@
     </script>
 </head>
 <body>
-    <div class="panel">
+    <div class="panel" style="position:relative;">
+        <div id="tx-indicator" class="tx-indicator off" title="TX Enable Indicator"></div>
         <div class="status">
             <div class="status-row-flex">
                 <div class="status-qsos">
@@ -276,6 +320,7 @@
                     <span class="qso">Current QSO: <span id="current-qso-value"></span></span>
                 </div>
                 <span class="qso-timer" id="qso-timer"></span>
+                <span class="script-timer" id="script-timer"></span>
                 <span class="status-label" id="enabled-label"></span>
             </div>
         </div>
@@ -294,7 +339,7 @@
             </div>
         </div>
         <div class="clublog-section">
-            <div class="clublog-title">Last 10 QSOs (Club Log)</div>
+            <div class="clublog-title">Last 30 QSOs (Club Log)</div>
             <div class="clublog-iframe-wrapper">
                 <iframe class="clublog-iframe" src="https://clublog.org/livestream/5Z4XB" frameborder="0" allowfullscreen scrolling="no"></iframe>
             </div>
