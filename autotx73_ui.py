@@ -9,6 +9,7 @@ from collections import deque
 import os
 import struct
 import json
+import random
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -162,6 +163,11 @@ class Autotx73UI:
         self.qso_start_time = None
         self.qso_monitor_thread = threading.Thread(target=self.qso_inactivity_monitor, daemon=True)
         self.qso_monitor_thread.start()
+        self.script_start_time = time.time()
+        self.script_timer_triggered = False
+        self.pending_script_timer_action = False
+        self.script_timer_thread = threading.Thread(target=self.script_timer_monitor, daemon=True)
+        self.script_timer_thread.start()
 
     def add_message(self, msg):
         with self.lock:
@@ -291,22 +297,45 @@ class Autotx73UI:
                 self.qso_active = False
                 # self.qso_start_time = None  # Do not reset here
                 self.reset_timer()
-                # Start post-QSO delay and re-enable TX in a background thread
                 def post_qso_reenable():
-                    self.add_message("Waiting 45 seconds before re-enabling TX...")
-                    self.start_countdown(45, "Post-QSO delay:")
-                    while self.countdown_active:
-                        time.sleep(0.1)
-                    self.add_message(f"Re-enabling TX (Alt-N) after QSO with {partner}...")
-                    if not self.tx_enabled:
-                        if send_alt_n():
-                            self.add_message("Alt-N sent - TX re-enabled after QSO.")
-                            self.tx_enabled = True
-                            self.reset_timer()
+                    # 60-min logic: if pending, trigger now
+                    if self.pending_script_timer_action:
+                        self.pending_script_timer_action = False
+                        self.script_timer_triggered = True
+                    if self.script_timer_triggered or (time.time() - self.script_start_time > 3600 and not self.script_timer_triggered):
+                        self.script_timer_triggered = False
+                        delay = random.randint(180, 600)
+                        self.add_message(f"Script active >60 min. Waiting {delay//60} min {delay%60} sec before CQ restart...")
+                        time.sleep(delay)
+                        if send_alt_6():
+                            self.add_message("Alt-6 sent (CQ restart). Waiting 1 minute before enabling TX...")
+                            time.sleep(60)
+                            if not self.tx_enabled:
+                                if send_alt_n():
+                                    self.add_message("Alt-N sent - TX enabled after CQ restart.")
+                                    self.tx_enabled = True
+                                    self.reset_timer()
+                                else:
+                                    self.add_message("Failed to send Alt-N after CQ restart.")
+                            else:
+                                self.add_message("TX already enabled, not sending Alt-N again.")
+                            self.script_start_time = time.time()
                         else:
-                            self.add_message("Failed to send Alt-N after QSO.")
+                            self.add_message("Failed to send Alt-6 (CQ restart).")
                     else:
-                        self.add_message("TX already enabled, not sending Alt-N again.")
+                        self.add_message("Waiting 45 seconds before enabling TX...")
+                        self.start_countdown(45, "Post-QSO delay:")
+                        while self.countdown_active:
+                            time.sleep(0.1)
+                        if not self.tx_enabled:
+                            if send_alt_n():
+                                self.add_message("Alt-N sent - TX enabled after QSO.")
+                                self.tx_enabled = True
+                                self.reset_timer()
+                            else:
+                                self.add_message("Failed to send Alt-N after QSO.")
+                        else:
+                            self.add_message("TX already enabled, not sending Alt-N again.")
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
 
     def qso_inactivity_monitor(self):
@@ -324,14 +353,27 @@ class Autotx73UI:
                     self.qso_start_time = None
             time.sleep(5)
 
+    def script_timer_monitor(self):
+        while self.running:
+            if not self.script_timer_triggered and not self.pending_script_timer_action and (time.time() - self.script_start_time > 3600):
+                if self.qso_active:
+                    self.pending_script_timer_action = True
+                else:
+                    self.script_timer_triggered = True
+            time.sleep(5)
+
     def write_status(self):
         if self.enabled:
             now = time.time()
             elapsed = int(now - self.last_tx_time)
             mins, secs = divmod(elapsed, 60)
             qso_timer_str = f"Last QSO: {mins}m {secs}s"
+            script_elapsed = int(now - self.script_start_time)
+            script_mins, script_secs = divmod(script_elapsed, 60)
+            script_timer_str = f"Script Uptime: {script_mins}m {script_secs}s"
         else:
             qso_timer_str = ""
+            script_timer_str = ""
         status = {
             'enabled': self.enabled,
             'tx': self.tx_enabled,
@@ -342,7 +384,8 @@ class Autotx73UI:
             'countdown_max': self.countdown_max,
             'countdown_value': self.countdown_value,
             'countdown_label': self.countdown_label,
-            'qso_timer_str': qso_timer_str
+            'qso_timer_str': qso_timer_str,
+            'script_timer_str': script_timer_str
         }
         try:
             with open('/tmp/autotx73_status.json', 'w') as f:

@@ -186,7 +186,9 @@ class Autotx73Daemon:
                 # self.qso_start_time = None  # Do not reset here
                 self.reset_timer()
                 def post_qso_reenable():
-                    if time.time() - self.script_start_time > 3600:
+                    if time.time() - self.script_start_time > 3600 or self.script_timer_triggered or self.pending_script_timer_action:
+                        self.script_timer_triggered = False
+                        self.pending_script_timer_action = False
                         delay = random.randint(180, 600)
                         self.add_message(f"Script active >60 min. Waiting {delay//60} min {delay%60} sec before CQ restart...")
                         time.sleep(delay)
