@@ -7,6 +7,7 @@ import sys
 import json
 import os
 from collections import deque
+import random
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -80,6 +81,7 @@ class Autotx73Daemon:
         self.qso_start_time = None
         self.qso_monitor_thread = threading.Thread(target=self.qso_inactivity_monitor, daemon=True)
         self.qso_monitor_thread.start()
+        self.script_start_time = time.time()
         self.status_thread = threading.Thread(target=self.status_and_command_worker, daemon=True)
         self.status_thread.start()
         self.udp_thread = threading.Thread(target=self.udp_listener, daemon=True)
@@ -184,20 +186,39 @@ class Autotx73Daemon:
                 # self.qso_start_time = None  # Do not reset here
                 self.reset_timer()
                 def post_qso_reenable():
-                    self.add_message("Waiting 45 seconds before re-enabling TX...")
-                    self.start_countdown(45, "Post-QSO delay:")
-                    while self.countdown_active:
-                        time.sleep(0.1)
-                    self.add_message(f"Re-enabling TX (Alt-N) after QSO with {partner}...")
-                    if not self.tx_enabled:
-                        if send_alt_n():
-                            self.add_message("Alt-N sent - TX re-enabled after QSO.")
-                            self.tx_enabled = True
-                            self.reset_timer()
+                    if time.time() - self.script_start_time > 3600:
+                        delay = random.randint(180, 600)
+                        self.add_message(f"Script active >60 min. Waiting {delay//60} min {delay%60} sec before CQ restart...")
+                        time.sleep(delay)
+                        if send_alt_6():
+                            self.add_message("Alt-6 sent (CQ restart). Waiting 1 minute before enabling TX...")
+                            time.sleep(60)
+                            if not self.tx_enabled:
+                                if send_alt_n():
+                                    self.add_message("Alt-N sent - TX enabled after CQ restart.")
+                                    self.tx_enabled = True
+                                    self.reset_timer()
+                                else:
+                                    self.add_message("Failed to send Alt-N after CQ restart.")
+                            else:
+                                self.add_message("TX already enabled, not sending Alt-N again.")
+                            self.script_start_time = time.time()
                         else:
-                            self.add_message("Failed to send Alt-N after QSO.")
+                            self.add_message("Failed to send Alt-6 (CQ restart).")
                     else:
-                        self.add_message("TX already enabled, not sending Alt-N again.")
+                        self.add_message("Waiting 45 seconds before enabling TX...")
+                        self.start_countdown(45, "Post-QSO delay:")
+                        while self.countdown_active:
+                            time.sleep(0.1)
+                        if not self.tx_enabled:
+                            if send_alt_n():
+                                self.add_message("Alt-N sent - TX enabled after QSO.")
+                                self.tx_enabled = True
+                                self.reset_timer()
+                            else:
+                                self.add_message("Failed to send Alt-N after QSO.")
+                        else:
+                            self.add_message("TX already enabled, not sending Alt-N again.")
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
 
     def parse_status_message(self, data):
@@ -213,8 +234,12 @@ class Autotx73Daemon:
             elapsed = int(now - self.last_tx_time)
             mins, secs = divmod(elapsed, 60)
             qso_timer_str = f"Last QSO: {mins}m {secs}s"
+            script_elapsed = int(now - self.script_start_time)
+            script_mins, script_secs = divmod(script_elapsed, 60)
+            script_timer_str = f"Script Uptime: {script_mins}m {script_secs}s"
         else:
             qso_timer_str = ""
+            script_timer_str = ""
         status = {
             'enabled': self.enabled,
             'tx': self.tx_enabled,
@@ -225,7 +250,8 @@ class Autotx73Daemon:
             'countdown_max': self.countdown_max,
             'countdown_value': self.countdown_value,
             'countdown_label': self.countdown_label,
-            'qso_timer_str': qso_timer_str
+            'qso_timer_str': qso_timer_str,
+            'script_timer_str': script_timer_str
         }
         try:
             with open('/tmp/autotx73_status.json', 'w') as f:
