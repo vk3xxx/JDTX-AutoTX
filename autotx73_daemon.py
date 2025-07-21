@@ -88,6 +88,8 @@ class Autotx73Daemon:
         self.status_thread.start()
         self.udp_thread = threading.Thread(target=self.udp_listener, daemon=True)
         self.udp_thread.start()
+        self.script_timer_thread = threading.Thread(target=self.script_timer_monitor, daemon=True)
+        self.script_timer_thread.start()
         # Clear status and command files on startup
         try:
             open('/tmp/autotx73_status.json', 'w').close()
@@ -209,7 +211,7 @@ class Autotx73Daemon:
                 # self.qso_start_time = None  # Do not reset here
                 self.reset_timer()
                 def post_qso_reenable():
-                    if time.time() - self.script_start_time > 3600 or self.script_timer_triggered or self.pending_script_timer_action:
+                    if self.script_timer_triggered or self.pending_script_timer_action:
                         self.script_timer_triggered = False
                         self.pending_script_timer_action = False
                         delay = random.randint(180, 600)
@@ -319,6 +321,15 @@ class Autotx73Daemon:
                     # Reset QSO state so this doesn't fire again
                     self.qso_active = False
                     self.qso_start_time = None
+            time.sleep(5)
+
+    def script_timer_monitor(self):
+        while self.running:
+            if not self.script_timer_triggered and not self.pending_script_timer_action and (time.time() - self.script_start_time > 3600):
+                if self.qso_active:
+                    self.pending_script_timer_action = True
+                else:
+                    self.script_timer_triggered = True
             time.sleep(5)
 
 if __name__ == "__main__":
