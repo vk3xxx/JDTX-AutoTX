@@ -326,22 +326,38 @@ class Autotx73UI:
                         self.script_timer_triggered = False
                         delay = random.randint(180, 600)
                         self.add_message(f"Script active >60 min. Waiting {delay//60} min {delay%60} sec before CQ restart...")
-                        time.sleep(delay)
-                        if send_alt_6():
-                            self.add_message("Alt-6 sent (CQ restart). Waiting 1 minute before enabling TX...")
-                            time.sleep(60)
-                            if not self.tx_enabled:
-                                if send_alt_n():
-                                    self.add_message("Alt-N sent - TX enabled after CQ restart.")
-                                    self.tx_enabled = True
-                                    self.reset_timer()
-                                else:
-                                    self.add_message("Failed to send Alt-N after CQ restart.")
+                        self.countdown_active = True
+                        self.countdown_max = delay
+                        self.countdown_label = "CQ restart delay:"
+                        for i in range(delay + 1):
+                            self.countdown_value = i
+                            self.write_status()
+                            self.draw()
+                            time.sleep(1)
+                        self.countdown_active = False
+                        self.write_status()
+                        self.draw()
+                        # Ensure TX is off before restarting CQ
+                        if self.tx_enabled:
+                            self.add_message("Disabling TX before CQ restart (60-min rule)...")
+                            if send_alt_n():
+                                self.tx_enabled = False
+                                self.add_message("TX disabled (Alt-N sent).")
                             else:
-                                self.add_message("TX already enabled, not sending Alt-N again.")
-                            self.script_start_time = time.time()
+                                self.add_message("Failed to disable TX (Alt-N) before CQ restart.")
+                        self.add_message("Enabling CQ (Alt-6) after 60-min break...")
+                        if send_alt_6():
+                            self.add_message("CQ enabled (Alt-6 sent). Waiting 2 seconds...")
+                            time.sleep(2)
+                            self.add_message("Enabling TX (Alt-N) after CQ restart...")
+                            if send_alt_n():
+                                self.tx_enabled = True
+                                self.add_message("TX enabled (Alt-N sent) after CQ restart.")
+                            else:
+                                self.add_message("Failed to enable TX (Alt-N) after CQ restart.")
                         else:
-                            self.add_message("Failed to send Alt-6 (CQ restart).")
+                            self.add_message("Failed to enable CQ (Alt-6) after 60-min break.")
+                        self.script_start_time = time.time()
                     else:
                         self.add_message("Waiting 45 seconds before enabling TX...")
                         self.start_countdown(45, "Post-QSO delay:")
