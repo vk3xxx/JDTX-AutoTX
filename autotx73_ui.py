@@ -158,6 +158,10 @@ class Autotx73UI:
             open('/tmp/autotx73_command.txt', 'w').close()
         except Exception:
             pass
+        self.qso_active = False
+        self.qso_start_time = None
+        self.qso_monitor_thread = threading.Thread(target=self.qso_inactivity_monitor, daemon=True)
+        self.qso_monitor_thread.start()
 
     def add_message(self, msg):
         with self.lock:
@@ -276,12 +280,16 @@ class Autotx73UI:
                 if not self.qso_partner or self.qso_partner != partner:
                     self.qso_partner = partner
                     self.add_message(f"QSO started with {partner}.")
+                self.qso_active = True
+                self.qso_start_time = time.time()
                 self.reset_timer()
             if qso_finish_pattern.search(text):
                 partner = self.qso_partner if self.qso_partner else "Unknown"
                 self.add_message(f"QSO with {partner} finished.")
                 self.last_qso_partner = partner
                 self.qso_partner = None
+                self.qso_active = False
+                self.qso_start_time = None
                 self.reset_timer()
                 # Start post-QSO delay and re-enable TX in a background thread
                 def post_qso_reenable():
@@ -300,6 +308,30 @@ class Autotx73UI:
                     else:
                         self.add_message("TX already enabled, not sending Alt-N again.")
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
+
+    def qso_inactivity_monitor(self):
+        while self.running:
+            if self.enabled and not self.qso_active:
+                elapsed = time.time() - self.last_tx_time
+                if elapsed > 360:
+                    self.add_message("No QSO for more than 6 minutes. Sending Alt-6 (CQ)...")
+                    if send_alt_6():
+                        self.add_message("Alt-6 sent (CQ restart). Waiting 1 minute before enabling TX...")
+                        time.sleep(60)
+                        if not self.tx_enabled:
+                            if send_alt_n():
+                                self.add_message("Alt-N sent - TX enabled after CQ restart.")
+                                self.tx_enabled = True
+                                self.reset_timer()
+                            else:
+                                self.add_message("Failed to send Alt-N after CQ restart.")
+                        else:
+                            self.add_message("TX already enabled, not sending Alt-N again.")
+                        # Reset timer so this doesn't fire again
+                        self.last_tx_time = time.time()
+                    else:
+                        self.add_message("Failed to send Alt-6 (CQ restart).");
+            time.sleep(5)
 
     def write_status(self):
         if self.enabled:
