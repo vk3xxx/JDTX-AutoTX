@@ -3,39 +3,235 @@
 <head>
     <title>AutoTX73 UI</title>
     <style>
-        body { font-family: monospace; background: #222; color: #eee; }
-        .panel { background: #333; border: 4px solid #900; border-radius: 20px; padding: 40px; width: 1000px; margin: 80px auto; }
-        .status { font-size: 2.4em; margin-bottom: 20px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 40px; }
-        .status-label { font-size: 2.4em; font-weight: bold; padding: 0 20px; border-radius: 10px; }
-        .enabled { background: #900; color: #fff; }
-        .disabled { background: #090; color: #fff; }
-        .last-qso { font-size: 2.4em; font-weight: bold; }
-        .controls button { margin: 10px; padding: 20px 40px; font-size: 2em; }
-        .messages { background: #222; border: 2px solid #555; padding: 20px; height: 240px; overflow-y: auto; margin-top: 20px; font-size: 1em; }
-        .qso { color: #0f0; }
-        .txon { color: #fff; background: #900; padding: 4px 16px; border-radius: 10px; }
-        .txoff { color: #fff; background: #090; padding: 4px 16px; border-radius: 10px; }
-        .countdown-bar-bg { background: #444; border-radius: 10px; width: 100%; height: 48px; margin: 20px 0; position: relative; }
-        .countdown-bar { background: #0f0; height: 100%; border-radius: 10px; transition: width 0.5s; }
-        .countdown-label { font-size: 2em; margin-bottom: 10px; }
-        .countdown-time { position: absolute; right: 20px; top: 8px; font-size: 2em; color: #222; font-weight: bold; }
+        body {
+            font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #232526 0%, #414345 100%);
+            color: #eaeaea;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .panel {
+            background: #2d313a;
+            border: 3px solid #2196f3;
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            padding: 2vw 2vw 1vw 2vw;
+            width: 90vw;
+            max-width: 1200px;
+            margin: 4vw auto 0 auto;
+        }
+        .status {
+            font-size: 1.5em;
+            margin-bottom: 18px;
+            text-align: center;
+            background: #23272f;
+            border-radius: 12px;
+            padding: 18px 32px;
+            box-shadow: 0 2px 8px rgba(33,150,243,0.08);
+        }
+        .status-label {
+            padding: 0 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            font-size: 1.2em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+        }
+        .enabled {
+            background: #e53935;
+            color: #fff;
+        }
+        .disabled {
+            background: #43a047;
+            color: #fff;
+        }
+        .last-qso, .status-label, .qso {
+            font-size: 1em;
+            font-family: inherit;
+            font-weight: 500;
+        }
+        .last-qso {
+            color: #90caf9;
+        }
+        .qso {
+            color: #81c784;
+        }
+        .status-qsos {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            flex: 1;
+            gap: 0.2em;
+        }
+        .status-row-flex {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .messages-controls-row {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: flex-start;
+            margin-bottom: 1vw;
+            gap: 1.5vw;
+        }
+        .messages {
+            background: #f5f7fa;
+            color: #222;
+            border: 1.5px solid #b0bec5;
+            border-radius: 8px;
+            padding: 24px;
+            height: 90px;
+            flex: 1 1 auto;
+            min-width: 220px;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: stretch;
+            overflow-y: auto;
+            margin-top: 0;
+            font-size: 0.95em;
+            box-shadow: 0 1px 4px rgba(33,150,243,0.06);
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0;
+            width: 160px;
+            min-width: 140px;
+            flex-shrink: 0;
+            height: 100%;
+        }
+        .controls button {
+            margin: 0;
+            padding: 16px 0;
+            font-size: 1.15em;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #1976d2 0%, #21cbf3 100%);
+            color: #fff;
+            font-weight: 700;
+            box-shadow: 0 4px 16px rgba(33,150,243,0.13);
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+            letter-spacing: 1px;
+            min-width: 120px;
+            min-height: 48px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls button:last-child {
+            margin-bottom: 0;
+        }
+        .controls button:hover, .controls button:focus {
+            background: linear-gradient(90deg, #1565c0 0%, #00bcd4 100%);
+            box-shadow: 0 6px 20px rgba(33,150,243,0.18);
+            transform: translateY(-2px) scale(1.04);
+            outline: none;
+        }
+        .countdown-bar-bg {
+            background: #e3eafc;
+            border-radius: 8px;
+            width: 100%;
+            height: 36px;
+            margin: 24px 0;
+            position: relative;
+            box-shadow: 0 1px 4px rgba(33,150,243,0.06);
+        }
+        .countdown-bar {
+            background: #2196f3;
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.5s;
+        }
+        .countdown-label {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            color: #1976d2;
+            font-weight: 600;
+        }
+        .countdown-time {
+            position: absolute;
+            right: 18px;
+            top: 4px;
+            font-size: 1.2em;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        .clublog-section {
+            margin: 1vw 0 0.5vw 0;
+            padding: 0.5vw;
+            background: #23272f;
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(33,150,243,0.06);
+        }
+        .clublog-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2196f3;
+            margin-bottom: 0.8vw;
+        }
+        .clublog-iframe-wrapper {
+            width: 100%;
+            aspect-ratio: 16/9;
+            position: relative;
+            overflow: hidden;
+            background: #fff;
+            border: 2px solid #2196f3;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clublog-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform-origin: top left;
+            background: #fff;
+            pointer-events: auto;
+        }
+        @media (max-width: 900px) {
+            .panel { width: 98vw; padding: 1vw; }
+            .clublog-iframe-wrapper { aspect-ratio: 16/10; }
+            .controls button {
+                font-size: 1em;
+                padding: 10px 0;
+            }
+        }
+        @media (max-width: 600px) {
+            .panel { width: 100vw; padding: 0.5vw; }
+            .clublog-iframe-wrapper { aspect-ratio: 4/3; }
+            .controls button {
+                font-size: 0.95em;
+                padding: 8px 0;
+            }
+        }
     </style>
     <script>
         function fetchStatus() {
             fetch('/cgi-bin/autotx73_control.py')
                 .then(r => r.json())
                 .then(data => {
-                    // Top row: Last QSO | Enabled/Disabled | QSO
+                    // Top row: Last QSO and Current QSO on two lines, status to the right
                     let enabledText = data.enabled ? 'ENABLED' : 'DISABLED';
                     let enabledClass = data.enabled ? 'enabled' : 'disabled';
                     let lastQSO = data.last_qso_partner ? data.last_qso_partner : 'None';
-                    let qsoText = data.qso_partner ? 'QSO: ' + data.qso_partner : 'QSO: None';
-                    document.getElementById('status-row').innerHTML =
-                        `<span class="last-qso">Last QSO: ${lastQSO}</span>` +
-                        `<span class="status-label ${enabledClass}">${enabledText}</span>` +
-                        `<span class="qso">${qsoText}</span>`;
+                    let currentQSO = data.qso_partner ? data.qso_partner : 'None';
+                    document.getElementById('last-qso-value').textContent = lastQSO;
+                    document.getElementById('current-qso-value').textContent = currentQSO;
+                    let enabledLabel = document.getElementById('enabled-label');
+                    enabledLabel.textContent = enabledText;
+                    enabledLabel.className = 'status-label ' + enabledClass;
                     let msgs = data.messages || [];
-                    document.getElementById('messages').innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
+                    document.getElementById('messages').innerHTML = msgs.slice().reverse().map(m => `<div>${m}</div>`).join('');
                     // Countdown
                     if (data.countdown_active) {
                         document.getElementById('countdown').style.display = 'block';
@@ -59,7 +255,15 @@
 </head>
 <body>
     <div class="panel">
-        <div class="status" id="status-row"></div>
+        <div class="status">
+            <div class="status-row-flex">
+                <div class="status-qsos">
+                    <span class="last-qso">Last QSO: <span id="last-qso-value"></span></span>
+                    <span class="qso">Current QSO: <span id="current-qso-value"></span></span>
+                </div>
+                <span class="status-label" id="enabled-label"></span>
+            </div>
+        </div>
         <div id="countdown" style="display:none;">
             <div class="countdown-label" id="countdown-label"></div>
             <div class="countdown-bar-bg">
@@ -67,11 +271,19 @@
                 <span class="countdown-time" id="countdown-time"></span>
             </div>
         </div>
-        <div class="controls">
-            <button onclick="sendCommand('enable')">Enable</button>
-            <button onclick="sendCommand('disable')">Disable</button>
+        <div class="messages-controls-row">
+            <div class="messages" id="messages"></div>
+            <div class="controls">
+                <button onclick="sendCommand('enable')">Enable</button>
+                <button onclick="sendCommand('disable')">Disable</button>
+            </div>
         </div>
-        <div class="messages" id="messages"></div>
+        <div class="clublog-section">
+            <div class="clublog-title">Last 10 QSOs (Club Log)</div>
+            <div class="clublog-iframe-wrapper">
+                <iframe class="clublog-iframe" src="https://clublog.org/livestream/5Z4XB" frameborder="0" allowfullscreen scrolling="no"></iframe>
+            </div>
+        </div>
     </div>
 </body>
 </html> 
