@@ -263,9 +263,9 @@ class Autotx73UI:
                     self.qso_partner = partner
                     self.add_message(f"QSO started with {partner}.")
                 self.reset_timer()
-            if self.qso_partner and qso_finish_pattern.search(text):
-                self.add_message(f"QSO with {self.qso_partner} finished.")
-                partner = self.qso_partner
+            if qso_finish_pattern.search(text):
+                partner = self.qso_partner if self.qso_partner else "Unknown"
+                self.add_message(f"QSO with {partner} finished.")
                 self.qso_partner = None
                 self.reset_timer()
                 # Start post-QSO delay and re-enable TX in a background thread
@@ -274,7 +274,7 @@ class Autotx73UI:
                     self.start_countdown(45, "Post-QSO delay:")
                     while self.countdown_active:
                         time.sleep(0.1)
-                    self.add_message("Re-enabling TX (Alt-N) after QSO with {}...".format(partner))
+                    self.add_message(f"Re-enabling TX (Alt-N) after QSO with {partner}...")
                     if send_alt_n():
                         self.add_message("Alt-N sent - TX re-enabled after QSO.")
                         self.reset_timer()
