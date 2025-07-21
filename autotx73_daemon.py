@@ -214,7 +214,9 @@ class Autotx73Daemon:
                         self.pending_script_timer_action = False
                         delay = random.randint(180, 600)
                         self.add_message(f"Script active >60 min. Waiting {delay//60} min {delay%60} sec before CQ restart...")
-                        time.sleep(delay)
+                        self.start_countdown(delay, "CQ restart delay:")
+                        while self.countdown_active:
+                            time.sleep(0.1)
                         if send_alt_6():
                             self.add_message("Alt-6 sent (CQ restart). Waiting 1 minute before enabling TX...")
                             time.sleep(60)
