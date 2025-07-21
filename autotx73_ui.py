@@ -295,6 +295,10 @@ class Autotx73UI:
                 threading.Thread(target=post_qso_reenable, daemon=True).start()
 
     def write_status(self):
+        now = time.time()
+        elapsed = int(now - self.last_tx_time)
+        mins, secs = divmod(elapsed, 60)
+        qso_timer_str = f"Last QSO: {mins}m {secs}s"
         status = {
             'enabled': self.enabled,
             'tx': self.tx_enabled,
@@ -304,7 +308,8 @@ class Autotx73UI:
             'countdown_active': self.countdown_active,
             'countdown_max': self.countdown_max,
             'countdown_value': self.countdown_value,
-            'countdown_label': self.countdown_label
+            'countdown_label': self.countdown_label,
+            'qso_timer_str': qso_timer_str
         }
         try:
             with open('/tmp/autotx73_status.json', 'w') as f:

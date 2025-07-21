@@ -69,6 +69,14 @@
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
+            gap: 1.5em;
+        }
+        .qso-timer {
+            color: #ffd54f;
+            font-size: 1em;
+            font-family: inherit;
+            font-weight: 500;
+            margin-right: 0.5em;
         }
         .messages-controls-row {
             display: flex;
@@ -242,6 +250,12 @@
                     } else {
                         document.getElementById('countdown').style.display = 'none';
                     }
+                    // QSO timer
+                    if (data.qso_timer_str) {
+                        document.getElementById('qso-timer').textContent = data.qso_timer_str;
+                    } else {
+                        document.getElementById('qso-timer').textContent = '';
+                    }
                 });
         }
         function sendCommand(cmd) {
@@ -261,6 +275,7 @@
                     <span class="last-qso">Last QSO: <span id="last-qso-value"></span></span>
                     <span class="qso">Current QSO: <span id="current-qso-value"></span></span>
                 </div>
+                <span class="qso-timer" id="qso-timer"></span>
                 <span class="status-label" id="enabled-label"></span>
             </div>
         </div>
