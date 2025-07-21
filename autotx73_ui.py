@@ -191,17 +191,17 @@ class Autotx73UI:
         if send_alt_6():
             self.add_message("Alt-6 sent (CQ enabled). Waiting 10 seconds...")
             self.reset_timer()
+            def after_enable_countdown():
+                self.add_message("Enabling TX (Alt-N)...")
+                if send_alt_n():
+                    self.add_message("Alt-N sent - Tx toggled")
+                    self.add_message("TX enabled (Alt-N sent). System is now active.")
+                    self.reset_timer()
+                    refocus_own_terminal(self.add_message)
+                else:
+                    self.add_message("Failed to send Alt-N (TX enable).")
             self.start_countdown(10, "Enabling:")
-            while self.countdown_active:
-                time.sleep(0.1)
-            self.add_message("Enabling TX (Alt-N)...")
-            if send_alt_n():
-                self.add_message("Alt-N sent - Tx toggled")
-                self.add_message("TX enabled (Alt-N sent). System is now active.")
-                self.reset_timer()
-                refocus_own_terminal(self.add_message)
-            else:
-                self.add_message("Failed to send Alt-N (TX enable).")
+            threading.Thread(target=lambda: (time.sleep(10), after_enable_countdown()), daemon=True).start()
         else:
             self.add_message("Failed to send Alt-6 (CQ enable).")
 
@@ -225,15 +225,15 @@ class Autotx73UI:
             self.add_message("Alt-N sent to disable TX.")
         else:
             self.add_message("Failed to send Alt-N to disable TX.")
+        def after_disable_countdown():
+            self.add_message("Sending Alt-H to halt TX...")
+            self.send_alt_h()
+            self.enabled = False
+            self.qso_partner = None
+            self.cq_active = False
+            refocus_own_terminal(self.add_message)
         self.start_countdown(5, "Disabling:")
-        while self.countdown_active:
-            time.sleep(0.1)
-        self.add_message("Sending Alt-H to halt TX...")
-        self.send_alt_h()
-        self.enabled = False
-        self.qso_partner = None
-        self.cq_active = False
-        refocus_own_terminal(self.add_message)
+        threading.Thread(target=lambda: (time.sleep(5), after_disable_countdown()), daemon=True).start()
 
     def parse_status_message(self, data):
         try:
