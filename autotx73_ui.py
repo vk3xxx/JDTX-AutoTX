@@ -285,7 +285,7 @@ class Autotx73UI:
 
     def draw(self):
         max_y, max_x = self.stdscr.getmaxyx()
-        border_thickness = 1  # Thinner top and bottom borders
+        border_thickness = 2  # Double border all around
         color = curses.color_pair(1) if self.enabled else curses.color_pair(2)
         # Fill main area with white background
         for y in range(border_thickness, max_y - border_thickness):
@@ -293,14 +293,15 @@ class Autotx73UI:
                 self.stdscr.addstr(y, border_thickness, " " * (max_x - 2 * border_thickness), curses.color_pair(4))
             except curses.error:
                 pass
-        # Top and bottom thick rows
-        for x in range(max_x):
-            try:
-                self.stdscr.addstr(0, x, " ", color)
-                self.stdscr.addstr(max_y - 1, x, " ", color)
-            except curses.error:
-                pass
-        # Left and right thick columns
+        # Top and bottom double rows
+        for y in range(border_thickness):
+            for x in range(max_x):
+                try:
+                    self.stdscr.addstr(y, x, " ", color)
+                    self.stdscr.addstr(max_y - 1 - y, x, " ", color)
+                except curses.error:
+                    pass
+        # Left and right double columns
         for y in range(border_thickness, max_y - border_thickness):
             for x in range(border_thickness):
                 try:
