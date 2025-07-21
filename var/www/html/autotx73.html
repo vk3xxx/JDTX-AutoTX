@@ -5,7 +5,11 @@
     <style>
         body { font-family: monospace; background: #222; color: #eee; }
         .panel { background: #333; border: 4px solid #900; border-radius: 20px; padding: 40px; width: 1000px; margin: 80px auto; }
-        .status { font-size: 2.4em; margin-bottom: 20px; }
+        .status { font-size: 2.4em; margin-bottom: 20px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 40px; }
+        .status-label { font-size: 2.4em; font-weight: bold; padding: 0 20px; border-radius: 10px; }
+        .enabled { background: #900; color: #fff; }
+        .disabled { background: #090; color: #fff; }
+        .last-qso { font-size: 2.4em; font-weight: bold; }
         .controls button { margin: 10px; padding: 20px 40px; font-size: 2em; }
         .messages { background: #222; border: 2px solid #555; padding: 20px; height: 240px; overflow-y: auto; margin-top: 20px; font-size: 1em; }
         .qso { color: #0f0; }
@@ -21,13 +25,15 @@
             fetch('/cgi-bin/autotx73_control.py')
                 .then(r => r.json())
                 .then(data => {
-                    document.getElementById('enabled').textContent = data.enabled ? 'ENABLED' : 'DISABLED';
-                    document.getElementById('enabled').style.color = data.enabled ? '#fff' : '#aaa';
-                    document.getElementById('tx').textContent = data.tx ? 'TX: ON' : 'TX: OFF';
-                    document.getElementById('tx').className = data.tx ? 'txon' : 'txoff';
-                    document.getElementById('qso').textContent = data.qso_partner ? 'QSO: ' + data.qso_partner : 'QSO: None';
-                    // Last QSO
-                    document.getElementById('last-qso').textContent = 'Last QSO: ' + (data.last_qso_partner ? data.last_qso_partner : 'None');
+                    // Top row: Last QSO | Enabled/Disabled | QSO
+                    let enabledText = data.enabled ? 'ENABLED' : 'DISABLED';
+                    let enabledClass = data.enabled ? 'enabled' : 'disabled';
+                    let lastQSO = data.last_qso_partner ? data.last_qso_partner : 'None';
+                    let qsoText = data.qso_partner ? 'QSO: ' + data.qso_partner : 'QSO: None';
+                    document.getElementById('status-row').innerHTML =
+                        `<span class="last-qso">Last QSO: ${lastQSO}</span>` +
+                        `<span class="status-label ${enabledClass}">${enabledText}</span>` +
+                        `<span class="qso">${qsoText}</span>`;
                     let msgs = data.messages || [];
                     document.getElementById('messages').innerHTML = msgs.map(m => `<div>${m}</div>`).join('');
                     // Countdown
@@ -53,10 +59,7 @@
 </head>
 <body>
     <div class="panel">
-        <div class="status">
-            <span id="enabled"></span> | <span id="tx"></span> | <span id="qso"></span>
-        </div>
-        <div class="last-qso" id="last-qso" style="font-size:1.5em; margin-bottom:20px;"></div>
+        <div class="status" id="status-row"></div>
         <div id="countdown" style="display:none;">
             <div class="countdown-label" id="countdown-label"></div>
             <div class="countdown-bar-bg">
