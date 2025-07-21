@@ -10,7 +10,7 @@ import os
 import struct
 import json
 import random
-from udp_message_funct import decode_jtdx_tx_enable
+import udp_message_funct
 
 # Your callsign
 CALLSIGN = "5Z4XB"
@@ -274,7 +274,7 @@ class Autotx73UI:
                 self.parse_status_message(data)
                 text = data.decode('ascii', errors='ignore')
                 # Detect TX enable/disable from UDP message
-                tx_state = decode_jtdx_tx_enable(data)
+                tx_state = udp_message_funct.decode_jtdx_tx_enable(data)
                 if tx_state is not None:
                     if tx_state == "on" and not self.tx_enabled:
                         self.add_message("[UDP] TX enabled detected from UDP message.")
