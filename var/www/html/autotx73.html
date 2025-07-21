@@ -4,13 +4,13 @@
     <title>AutoTX73 UI</title>
     <style>
         body { font-family: monospace; background: #222; color: #eee; }
-        .panel { background: #333; border: 2px solid #900; border-radius: 10px; padding: 20px; width: 500px; margin: 40px auto; }
-        .status { font-size: 1.2em; margin-bottom: 10px; }
-        .controls button { margin: 5px; padding: 10px 20px; font-size: 1em; }
-        .messages { background: #222; border: 1px solid #555; padding: 10px; height: 120px; overflow-y: auto; margin-top: 10px; }
+        .panel { background: #333; border: 4px solid #900; border-radius: 20px; padding: 40px; width: 1000px; margin: 80px auto; }
+        .status { font-size: 2.4em; margin-bottom: 20px; }
+        .controls button { margin: 10px; padding: 20px 40px; font-size: 2em; }
+        .messages { background: #222; border: 2px solid #555; padding: 20px; height: 240px; overflow-y: auto; margin-top: 20px; font-size: 2em; }
         .qso { color: #0f0; }
-        .txon { color: #fff; background: #900; padding: 2px 8px; border-radius: 5px; }
-        .txoff { color: #fff; background: #090; padding: 2px 8px; border-radius: 5px; }
+        .txon { color: #fff; background: #900; padding: 4px 16px; border-radius: 10px; }
+        .txoff { color: #fff; background: #090; padding: 4px 16px; border-radius: 10px; }
     </style>
     <script>
         function fetchStatus() {
@@ -43,7 +43,6 @@
         <div class="controls">
             <button onclick="sendCommand('enable')">Enable</button>
             <button onclick="sendCommand('disable')">Disable</button>
-            <button onclick="sendCommand('quit')">Quit</button>
         </div>
         <div class="messages" id="messages"></div>
     </div>
